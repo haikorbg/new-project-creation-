@@ -117,6 +117,12 @@
               </select>
             </div>
             
+            <div class="mb-3">
+              <label for="projectMembers" class="form-label">Project Members</label>
+              <input type="text" class="form-control" id="projectMembers" placeholder="Enter email addresses separated by commas">
+              <div class="form-text">These members will be added to the project's Slack channel</div>
+            </div>
+            
             <h5 class="mt-4">Milestones</h5>
             <div id="milestonesContainer">
               <!-- Milestone inputs will be added here -->
@@ -146,11 +152,6 @@
       <div class="mb-3">
         <label class="form-label">Due Date</label>
         <input type="date" class="form-control milestone-target-date">
-      </div>
-      <div class="mb-3">
-        <label class="form-label">Estimator (Slack @mention or email)</label>
-        <input type="text" class="form-control milestone-estimator" placeholder="@username or email">
-        <div class="form-text">This person will be tagged in Slack for milestone estimation</div>
       </div>
       
       <!-- Subtasks Section -->

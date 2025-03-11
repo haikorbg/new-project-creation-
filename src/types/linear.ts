@@ -6,6 +6,7 @@ export interface Project {
   startDate?: string;
   endDate?: string;
   milestones: Milestone[];
+  members: string[]; // Array of member email addresses
 }
 
 export interface Subtask {

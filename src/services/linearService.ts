@@ -56,6 +56,7 @@ export interface CreateProjectInput {
   state?: string;
   startDate?: string;
   endDate?: string;
+  members?: string[];  // Array of member email addresses
   milestones?: {
     name: string;
     description?: string;
@@ -149,7 +150,8 @@ export const LinearService = {
           state: project.state,
           startDate,
           endDate,
-          milestones
+          milestones,
+          members: [] // Initialize with empty array since we don't have member data yet
         });
       }
       
@@ -240,6 +242,7 @@ export const LinearService = {
 
       console.log('Creating project with team ID:', teamId);
       console.log('Project input:', JSON.stringify(input, null, 2));
+      console.log('Project members:', input.members); // Debug log for members
 
       // Create the project in Linear using the SDK
       const projectResponse = await linearClient.createProject({
@@ -325,7 +328,8 @@ export const LinearService = {
         state: input.state || 'planned',
         startDate: input.startDate,
         endDate: input.endDate,
-        milestones: createdMilestones
+        milestones: createdMilestones,
+        members: input.members || [] // Add members from input
       } as Project;
 
       // Send Slack notification about the new project

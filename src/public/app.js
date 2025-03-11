@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const projectStartDateInput = document.getElementById('projectStartDate');
   const projectEndDateInput = document.getElementById('projectEndDate');
   const projectStateSelect = document.getElementById('projectState');
+  const projectMembersInput = document.getElementById('projectMembers');
   const milestonesContainer = document.getElementById('milestonesContainer');
   const addMilestoneBtn = document.getElementById('addMilestoneBtn');
   const submitProjectBtn = document.getElementById('submitProjectBtn');
@@ -365,6 +366,7 @@ document.addEventListener('DOMContentLoaded', () => {
     projectStartDateInput.value = '';
     projectEndDateInput.value = '';
     projectStateSelect.value = 'planned';
+    projectMembersInput.value = '';
     milestonesContainer.innerHTML = '';
   }
   
@@ -504,6 +506,12 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
     
+    // Parse members
+    const members = projectMembersInput.value
+      .split(',')
+      .map(email => email.trim())
+      .filter(email => email.length > 0);
+    
     // Collect milestone data
     const milestones = [];
     const milestoneInputs = milestonesContainer.querySelectorAll('.milestone-input');
@@ -530,7 +538,6 @@ document.addEventListener('DOMContentLoaded', () => {
         milestones.push({
           name: nameInput.value.trim(),
           targetDate: targetDateInput.value || undefined,
-          estimator: milestoneInput.querySelector('.milestone-estimator').value.trim() || undefined,
           subtasks
         });
       }
@@ -543,6 +550,7 @@ document.addEventListener('DOMContentLoaded', () => {
       startDate: projectStartDateInput.value || undefined,
       endDate: projectEndDateInput.value || undefined,
       state: projectStateSelect.value,
+      members,
       milestones
     };
     
