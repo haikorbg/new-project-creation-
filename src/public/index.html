@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Linear Milestone Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container py-5">
+    <header class="mb-5">
+      <div class="row align-items-center mb-4">
+        <div class="col">
+          <h1 class="display-5 mb-1">Linear Milestone Tracker</h1>
+          <p class="text-muted mb-0">Track your Linear projects and monitor overdue milestones</p>
+        </div>
+      </div>
+      <div class="d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center gap-3">
+          <button id="refreshBtn" class="btn btn-primary">
+            Refresh Data
+          </button>
+          <button id="createProjectBtn" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#createProjectModal">
+            Create Project
+          </button>
+          <span id="lastUpdated" class="text-muted"></span>
+        </div>
+        <div class="form-check form-switch">
+          <input class="form-check-input" type="checkbox" id="showOverdueOnly">
+          <label class="form-check-label" for="showOverdueOnly">Show Overdue Milestones Only</label>
+        </div>
+      </div>
+    </header>
+
+    <div id="loadingIndicator" class="text-center my-5 d-none">
+      <div class="spinner-border" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+      <p class="mt-3 text-muted">Loading data from Linear...</p>
+    </div>
+
+    <div id="errorMessage" class="alert alert-danger d-none" role="alert">
+      An error occurred while fetching data from Linear.
+    </div>
+
+    <div id="successMessage" class="alert alert-success d-none" role="alert">
+      Operation completed successfully.
+    </div>
+
+    <div id="overdueAlert" class="alert alert-warning d-none" role="alert">
+      <strong>Warning!</strong> You have overdue milestones that require attention.
+    </div>
+
+    <div id="projectsContainer" class="mt-4">
+      <!-- Projects will be dynamically inserted here -->
+    </div>
+  </div>
+
+  <!-- Create Project Modal -->
+  <div class="modal fade" id="createProjectModal" tabindex="-1" aria-labelledby="createProjectModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="createProjectModalLabel">Create New Project</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <!-- SoW PDF Upload Section -->
+          <div class="card mb-4">
+            <div class="card-header">
+              <h6 class="mb-0">Upload Statement of Work (SoW)</h6>
+            </div>
+            <div class="card-body">
+              <p class="text-muted small mb-3">Upload a Statement of Work PDF to automatically fill in project details.</p>
+              <form id="sowUploadForm" enctype="multipart/form-data">
+                <div class="mb-3">
+                  <input class="form-control" type="file" id="sowFileInput" accept=".pdf">
+                </div>
+                <button type="button" id="uploadSowBtn" class="btn btn-outline-primary">Upload & Extract Data</button>
+              </form>
+              <div id="sowUploadStatus" class="mt-2 d-none"></div>
+            </div>
+          </div>
+
+          <!-- Project Details Form -->
+          <form id="createProjectForm">
+            <div class="mb-3">
+              <label for="projectName" class="form-label">Project Name *</label>
+              <input type="text" class="form-control" id="projectName" required>
+            </div>
+            <div class="mb-3">
+              <label for="projectDescription" class="form-label">Description</label>
+              <textarea class="form-control" id="projectDescription" rows="3"></textarea>
+            </div>
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <label for="projectStartDate" class="form-label">Start Date</label>
+                <input type="date" class="form-control" id="projectStartDate">
+              </div>
+              <div class="col-md-6">
+                <label for="projectEndDate" class="form-label">End Date</label>
+                <input type="date" class="form-control" id="projectEndDate">
+              </div>
+            </div>
+            <div class="mb-3">
+              <label for="projectState" class="form-label">State</label>
+              <select class="form-select" id="projectState">
+                <option value="planned">Planned</option>
+                <option value="started">Started</option>
+                <option value="paused">Paused</option>
+                <option value="completed">Completed</option>
+                <option value="canceled">Canceled</option>
+              </select>
+            </div>
+            
+            <h5 class="mt-4">Milestones</h5>
+            <div id="milestonesContainer">
+              <!-- Milestone inputs will be added here -->
+            </div>
+            <button type="button" id="addMilestoneBtn" class="btn btn-outline-secondary mt-2">Add Milestone</button>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" id="submitProjectBtn" class="btn btn-primary">Create Project</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Milestone Template (hidden) -->
+  <template id="milestoneTemplate">
+    <div class="milestone-input card p-3 mb-3">
+      <div class="d-flex justify-content-between mb-2">
+        <h6 class="card-title">Milestone</h6>
+        <button type="button" class="btn-close remove-milestone" aria-label="Remove milestone"></button>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Name *</label>
+        <input type="text" class="form-control milestone-name" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Due Date</label>
+        <input type="date" class="form-control milestone-target-date">
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Estimator (Slack @mention or email)</label>
+        <input type="text" class="form-control milestone-estimator" placeholder="@username or email">
+        <div class="form-text">This person will be tagged in Slack for milestone estimation</div>
+      </div>
+      
+      <!-- Subtasks Section -->
+      <div class="subtasks-section">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <label class="form-label mb-0">Subtasks</label>
+          <button type="button" class="btn btn-sm btn-outline-secondary add-subtask">Add Subtask</button>
+        </div>
+        <div class="subtasks-container">
+          <!-- Subtasks will be added here -->
+        </div>
+      </div>
+    </div>
+  </template>
+  
+  <!-- Subtask Template (hidden) -->
+  <template id="subtaskTemplate">
+    <div class="subtask-input mb-2">
+      <div class="input-group">
+        <input type="text" class="form-control subtask-name" placeholder="Subtask name">
+        <button class="btn btn-outline-danger remove-subtask" type="button">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+    </div>
+  </template>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html> 

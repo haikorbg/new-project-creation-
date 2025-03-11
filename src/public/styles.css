@@ -1,0 +1,311 @@
+/* Modern color palette and base styles */
+:root {
+  --primary-color: #6366f1;
+  --primary-hover: #4f46e5;
+  --success-color: #22c55e;
+  --danger-color: #ef4444;
+  --warning-color: #f59e0b;
+  --text-primary: #1f2937;
+  --text-secondary: #6b7280;
+  --bg-light: #f9fafb;
+  --bg-white: #ffffff;
+  --border-color: #e5e7eb;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: var(--bg-light);
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
+/* Modern card styling */
+.project-card {
+  margin-bottom: 1.5rem;
+  border-radius: 1rem;
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-white);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease-in-out;
+}
+
+.project-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.project-header {
+  padding: 1.25rem;
+  border-bottom: 1px solid var(--border-color);
+  background-color: var(--bg-white);
+  border-radius: 1rem 1rem 0 0;
+}
+
+/* Modern milestone styling */
+.milestone-item {
+  border-left: 4px solid var(--text-secondary);
+  padding: 1rem;
+  margin-bottom: 1rem;
+  background-color: var(--bg-light);
+  border-radius: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.milestone-item.overdue {
+  border-left-color: var(--danger-color);
+  background-color: rgba(239, 68, 68, 0.05);
+}
+
+.milestone-date {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+}
+
+.milestone-date.overdue {
+  color: var(--danger-color);
+  font-weight: 500;
+}
+
+/* Modern button styling */
+.btn-primary {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.btn-primary:hover {
+  background-color: var(--primary-hover);
+  border-color: var(--primary-hover);
+  transform: translateY(-1px);
+}
+
+.btn-success {
+  background-color: var(--success-color);
+  border-color: var(--success-color);
+}
+
+/* Modern subtask styling */
+.subtasks-section {
+  margin-top: 1rem;
+}
+
+.subtask-item {
+  margin: 0.5rem 0;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  background-color: var(--bg-light);
+  border: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  transition: all 0.2s ease;
+}
+
+.subtask-item:hover {
+  background-color: var(--bg-white);
+  border-color: var(--primary-color);
+}
+
+.subtask-item.done {
+  background-color: rgba(34, 197, 94, 0.1);
+  border-color: var(--success-color);
+}
+
+.subtask-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 1rem;
+}
+
+.subtask-name {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.subtask-status {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 1rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.subtask-status.done {
+  background-color: var(--success-color);
+  color: white;
+}
+
+.subtask-status.active {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.subtask-status.in-progress {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.subtask-status.backlog {
+  background-color: var(--text-secondary);
+  color: white;
+}
+
+.subtask-status.canceled {
+  background-color: var(--danger-color);
+  color: white;
+}
+
+/* Modern alert styling */
+.alert {
+  border-radius: 0.5rem;
+  border: none;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.alert-warning {
+  background-color: rgba(245, 158, 11, 0.1);
+  color: var(--warning-color);
+}
+
+.alert-danger {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: var(--danger-color);
+}
+
+.alert-success {
+  background-color: rgba(34, 197, 94, 0.1);
+  color: var(--success-color);
+}
+
+/* Modern form styling */
+.form-control {
+  border-radius: 0.5rem;
+  border: 1px solid var(--border-color);
+  padding: 0.75rem;
+  transition: all 0.2s ease;
+}
+
+.form-control:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1);
+}
+
+/* Modern switch styling */
+.form-switch .form-check-input {
+  background-color: var(--border-color);
+  border: none;
+  cursor: pointer;
+}
+
+.form-switch .form-check-input:checked {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+/* Loading indicator styling */
+.spinner-border {
+  color: var(--primary-color);
+}
+
+/* Modern header styling */
+h1 {
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+}
+
+.text-muted {
+  color: var(--text-secondary) !important;
+}
+
+.project-state {
+  font-size: 0.85rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+}
+
+.state-active {
+  background-color: #28a745;
+  color: white;
+}
+
+.state-completed {
+  background-color: #6c757d;
+  color: white;
+}
+
+.state-canceled {
+  background-color: #dc3545;
+  color: white;
+}
+
+/* Subtasks styling */
+.subtasks-section h6 {
+  color: #495057;
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+}
+
+.subtasks-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.subtask-item::before {
+  content: "•";
+  margin-right: 0.5rem;
+  color: #6c757d;
+}
+
+.subtask-description {
+  color: #6c757d;
+  font-size: 0.85rem;
+}
+
+/* Form subtasks styling */
+.subtask-input {
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  padding: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.subtask-input .input-group {
+  gap: 0.5rem;
+}
+
+.subtask-input .form-control {
+  border-radius: 4px;
+}
+
+.subtask-input .btn-outline-danger {
+  border-radius: 4px;
+  padding: 0.25rem 0.5rem;
+}
+
+#lastUpdated {
+  font-size: 0.85rem;
+}
+
+.hidden {
+  display: none;
+}
+
+.badge-overdue {
+  background-color: #dc3545;
+  color: white;
+} 
