@@ -8,12 +8,19 @@ dotenv.config();
 const slackClient = new WebClient(process.env.SLACK_BOT_TOKEN);
 const SLACK_CHANNEL = 'C07PWD53552';
 
+// Debug logging for Slack configuration
+console.log('Slack configuration check:');
+console.log('Slack token exists:', !!process.env.SLACK_BOT_TOKEN);
+console.log('Slack token first 10 chars:', process.env.SLACK_BOT_TOKEN?.substring(0, 10));
+console.log('Using Slack channel:', SLACK_CHANNEL);
+
 export const SlackService = {
   /**
    * Send a notification about new project creation to Slack
    */
   async notifyProjectCreation(project: Project): Promise<void> {
     try {
+      console.log('Attempting to send Slack notification for project:', project.name);
       // Create a list of milestone assignments
       const milestoneAssignments = project.milestones
         .filter(m => m.estimator)

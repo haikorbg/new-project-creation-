@@ -4,6 +4,14 @@ import multer from 'multer';
 import fs from 'fs';
 import LinearService from './services/linearService';
 import PdfService, { ProjectData, Milestone, Subtask } from './services/pdfService';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+// Debug log to check environment variables
+console.log('Environment check:');
+console.log('LINEAR_API_KEY exists:', !!process.env.LINEAR_API_KEY);
+console.log('LINEAR_API_KEY length:', process.env.LINEAR_API_KEY?.length);
 
 const app = express();
 const PORT = process.env.PORT || 3000;

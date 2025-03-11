@@ -5,8 +5,25 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+// Debug logging for Linear API key
+console.log('Linear API Key check in linearService:');
+console.log('API Key exists:', !!process.env.LINEAR_API_KEY);
+console.log('API Key first 10 chars:', process.env.LINEAR_API_KEY?.substring(0, 10));
+
 // Initialize Linear client with API key from environment variables
-const linearClient = new LinearClient({ apiKey: process.env.LINEAR_API_KEY });
+const linearClient = new LinearClient({ 
+  apiKey: process.env.LINEAR_API_KEY || '' 
+});
+
+// Test the Linear client connection
+(async () => {
+  try {
+    const viewer = await linearClient.viewer;
+    console.log('Linear client initialized successfully. Connected as:', viewer.name);
+  } catch (error) {
+    console.error('Error initializing Linear client:', error);
+  }
+})();
 
 // In-memory storage for projects and milestones
 let projectsCache: Project[] = [];
@@ -301,7 +318,7 @@ export const LinearService = {
       }
 
       // Return the created project
-      return {
+      const createdProject = {
         id: project.id,
         name: input.name,
         ...(input.description ? { description: input.description } : {}),
@@ -310,6 +327,17 @@ export const LinearService = {
         endDate: input.endDate,
         milestones: createdMilestones
       } as Project;
+
+      // Send Slack notification about the new project
+      try {
+        await SlackService.notifyProjectCreation(createdProject);
+        console.log('Slack notification sent for new project creation');
+      } catch (error) {
+        console.error('Error sending Slack notification:', error);
+        // Don't throw the error here to avoid failing the project creation
+      }
+
+      return createdProject;
     } catch (error) {
       console.error('Error in createProject:', error);
       throw error;
