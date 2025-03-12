@@ -38,12 +38,346 @@ document.addEventListener('DOMContentLoaded', () => {
   // State
   let projects = [];
   let showOverdueOnly = false;
+  let autoRefreshInterval = null;
+  const AUTO_REFRESH_INTERVAL = 1 * 60 * 1000; // 1 minute in milliseconds for testing
+
+  // Project date tracking
+  const PROJECT_DATES_KEY = 'projectDatesTracking';
+  
+  // Add auto-refresh toggle functionality
+  const autoRefreshCheckbox = document.createElement('div');
+  autoRefreshCheckbox.className = 'form-check mb-3';
+  autoRefreshCheckbox.innerHTML = `
+    <input class="form-check-input" type="checkbox" id="autoRefreshToggle">
+    <label class="form-check-label" for="autoRefreshToggle">
+      Auto-refresh every minute
+    </label>
+  `;
+  refreshBtn.parentNode.insertBefore(autoRefreshCheckbox, refreshBtn.nextSibling);
+
+  document.getElementById('autoRefreshToggle').addEventListener('change', function(e) {
+    if (e.target.checked) {
+      startAutoRefresh();
+      showSuccess('Auto-refresh enabled - refreshing every minute');
+    } else {
+      stopAutoRefresh();
+      showSuccess('Auto-refresh disabled');
+    }
+  });
+
+  function startAutoRefresh() {
+    if (autoRefreshInterval) {
+      clearInterval(autoRefreshInterval);
+    }
+    autoRefreshInterval = setInterval(refreshData, AUTO_REFRESH_INTERVAL);
+    console.log('Auto-refresh started');
+  }
+
+  function stopAutoRefresh() {
+    if (autoRefreshInterval) {
+      clearInterval(autoRefreshInterval);
+      autoRefreshInterval = null;
+      console.log('Auto-refresh stopped');
+    }
+  }
+
+  function getProjectTracking() {
+    const tracking = localStorage.getItem(PROJECT_DATES_KEY);
+    if (!tracking) {
+      const initialTracking = {};
+      localStorage.setItem(PROJECT_DATES_KEY, JSON.stringify(initialTracking));
+      return initialTracking;
+    }
+    try {
+      return JSON.parse(tracking) || {};
+    } catch (e) {
+      console.error('Error parsing project tracking data:', e);
+      return {};
+    }
+  }
+
+  function saveProjectTracking(projectId, projectName, milestones) {
+    const tracking = getProjectTracking();
+    tracking[projectId] = {
+      projectName,
+      milestones: milestones.map(m => ({
+        id: m.id,
+        name: m.name,
+        initialTargetDate: normalizeDate(m.targetDate)
+      })),
+      dateSetAt: new Date().toISOString(),
+      reminderSent: false,
+      dateChangeNotified: false
+    };
+    localStorage.setItem(PROJECT_DATES_KEY, JSON.stringify(tracking));
+  }
+
+  function checkProjectDates() {
+    const tracking = getProjectTracking();
+    const now = new Date();
+    
+    console.log('=== Starting Date Reminder Check ===');
+    console.log('Current tracking data:', JSON.stringify(tracking, null, 2));
+    console.log('Current projects:', JSON.stringify(projects, null, 2));
+    
+    projects.forEach(project => {
+      console.log(`\nChecking project: ${project.name} (ID: ${project.id})`);
+      const tracked = tracking[project.id];
+      
+      if (!tracked) {
+        console.log('No tracking data found for this project');
+        // Save tracking data if it doesn't exist
+        saveProjectTracking(
+          project.id,
+          project.name,
+          project.milestones.map(m => ({
+            id: m.id,
+            name: m.name,
+            targetDate: m.targetDate
+          }))
+        );
+        console.log('Created new tracking data for project');
+        return;
+      }
+      
+      console.log('Tracked data:', JSON.stringify(tracked, null, 2));
+      
+      const dateSetAt = new Date(tracked.dateSetAt);
+      const minutesSinceCreation = (now - dateSetAt) / (1000 * 60);
+      
+      console.log('Time since creation:', {
+        dateSetAt: dateSetAt.toISOString(),
+        minutesSinceCreation,
+        hasBeenTwoMinutes: minutesSinceCreation >= 2
+      });
+      
+      // First, check if any milestone dates have changed from their initial values
+      let hasChangedDates = false;
+      const changedMilestones = [];
+
+      project.milestones.forEach(currentMilestone => {
+        const trackedMilestone = tracked.milestones.find(m => m.id === currentMilestone.id);
+        
+        console.log('Checking milestone:', {
+          name: currentMilestone.name,
+          currentDate: currentMilestone.targetDate,
+          trackedDate: trackedMilestone?.initialTargetDate,
+          hasChanged: trackedMilestone && normalizeDate(currentMilestone.targetDate) !== normalizeDate(trackedMilestone.initialTargetDate)
+        });
+        
+        if (trackedMilestone && normalizeDate(currentMilestone.targetDate) !== normalizeDate(trackedMilestone.initialTargetDate)) {
+          hasChangedDates = true;
+          changedMilestones.push({
+            name: currentMilestone.name,
+            targetDate: currentMilestone.targetDate,
+            previousDate: trackedMilestone.initialTargetDate
+          });
+        }
+      });
+
+      // If any dates have changed and we haven't notified about changes yet
+      if (hasChangedDates && !tracked.dateChangeNotified) {
+        console.log('Milestone dates changed, sending notification:', {
+          projectName: project.name,
+          changedMilestones: changedMilestones,
+          notifyingUser: 'bbudinov@appolica.com'
+        });
+        
+        (async () => {
+          try {
+            const notificationData = {
+              projectId: project.id,
+              projectName: project.name,
+              members: ['bbudinov@appolica.com'],
+              milestones: changedMilestones,
+              isChangeNotification: true,
+              slackTag: true,
+              slackEmail: 'bbudinov@appolica.com',
+              message: `Milestone dates have been changed in project "${project.name}". Please review the changes.`,
+              changes: changedMilestones.map(m => `${m.name}: ${formatDate(m.previousDate)} → ${formatDate(m.targetDate)}`).join('\n')
+            };
+
+            console.log('Sending notification with data:', notificationData);
+
+            const response = await fetch('/api/notify/dates-reminder', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(notificationData)
+            });
+
+            if (!response.ok) {
+              const errorText = await response.text();
+              throw new Error(`HTTP error! Status: ${response.status}, Response: ${errorText}`);
+            }
+
+            const result = await response.text();
+            console.log('Change notification sent successfully:', result);
+
+            // Update tracking data with new dates and mark as notified
+            const updatedTracking = getProjectTracking();
+            if (updatedTracking[project.id]) {
+              changedMilestones.forEach(changed => {
+                const milestoneToUpdate = updatedTracking[project.id].milestones.find(m => m.name === changed.name);
+                if (milestoneToUpdate) {
+                  milestoneToUpdate.initialTargetDate = changed.targetDate;
+                }
+              });
+              updatedTracking[project.id].dateChangeNotified = true;
+              localStorage.setItem(PROJECT_DATES_KEY, JSON.stringify(updatedTracking));
+            }
+          } catch (error) {
+            console.error('Error sending change notification:', {
+              error: error.message,
+              stack: error.stack,
+              projectName: project.name,
+              milestones: changedMilestones
+            });
+          }
+        })();
+      }
+      // If no dates have changed and enough time has passed, send initial reminder
+      else if (!hasChangedDates && minutesSinceCreation >= 2 && !tracked.reminderSent) {
+        console.log('No date changes detected, sending reminder for unchanged dates');
+        fetch('/api/notify/dates-reminder', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            projectId: project.id,
+            projectName: project.name,
+            members: project.members || [],
+            milestones: project.milestones.map(m => ({
+              name: m.name,
+              targetDate: m.targetDate
+            })),
+            isChangeNotification: false
+          })
+        }).then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+          }
+          return response.text();
+        }).then(result => {
+          console.log('Reminder sent successfully for unchanged dates');
+          const updatedTracking = getProjectTracking();
+          if (updatedTracking[project.id]) {
+            updatedTracking[project.id].reminderSent = true;
+            localStorage.setItem(PROJECT_DATES_KEY, JSON.stringify(updatedTracking));
+          }
+        }).catch(error => {
+          console.error('Error sending reminder:', error);
+        });
+      } else {
+        console.log('No action needed:', {
+          projectName: project.name,
+          hasChangedDates,
+          minutesSinceCreation,
+          reminderAlreadySent: tracked.reminderSent,
+          dateChangeNotified: tracked.dateChangeNotified
+        });
+      }
+    });
+    
+    console.log('=== Date Reminder Check Complete ===');
+  }
+
+  // Add these helper functions before checkProjectDates
+  function calculateMilestoneProgress(milestone) {
+    if (!milestone.subtasks || milestone.subtasks.length === 0) {
+      return 0;
+    }
+    
+    const completedTasks = milestone.subtasks.filter(task => task.status === 'Done').length;
+    return (completedTasks / milestone.subtasks.length) * 100;
+  }
+
+  function isMilestoneDueSoon(targetDate) {
+    if (!targetDate) return false;
+    
+    const dueDate = new Date(normalizeDate(targetDate));
+    const today = new Date();
+    const daysUntilDue = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
+    
+    return daysUntilDue <= 10 && daysUntilDue >= 0;
+  }
+
+  function checkMilestoneProgress() {
+    console.log('=== Starting Milestone Progress Check ===');
+    
+    projects.forEach(project => {
+      project.milestones.forEach(milestone => {
+        if (isMilestoneDueSoon(milestone.targetDate)) {
+          const progress = calculateMilestoneProgress(milestone);
+          const isAtRisk = progress < 70;
+          
+          console.log('Milestone progress check:', {
+            projectName: project.name,
+            milestoneName: milestone.name,
+            targetDate: milestone.targetDate,
+            progress: progress.toFixed(1) + '%',
+            isAtRisk
+          });
+
+          // Send notification about milestone progress
+          (async () => {
+            try {
+              const notificationData = {
+                projectId: project.id,
+                projectName: project.name,
+                milestone: {
+                  name: milestone.name,
+                  targetDate: milestone.targetDate,
+                  progress: progress.toFixed(1),
+                  isAtRisk
+                },
+                isProgressNotification: true,
+                message: `🎯 Milestone Progress Update for "${project.name}"\n\n` +
+                        `📌 Milestone: ${milestone.name}\n` +
+                        `📅 Due Date: ${formatDate(milestone.targetDate)}\n` +
+                        `📊 Current Progress: ${progress.toFixed(1)}%\n` +
+                        `${isAtRisk ? '⚠️ Status: AT RISK - Progress below 70%' : '✅ Status: On Track'}`
+              };
+
+              console.log('Sending progress notification:', notificationData);
+
+              const response = await fetch('/api/notify/milestone-progress', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(notificationData)
+              });
+
+              if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+              }
+
+              const result = await response.text();
+              console.log('Progress notification sent successfully:', result);
+            } catch (error) {
+              console.error('Error sending progress notification:', error);
+            }
+          })();
+        }
+      });
+    });
+    
+    console.log('=== Milestone Progress Check Complete ===');
+  }
 
   // Event listeners
   refreshBtn.addEventListener('click', refreshData);
   showOverdueOnlyCheckbox.addEventListener('change', (e) => {
     showOverdueOnly = e.target.checked;
     renderProjects();
+  });
+  
+  // Cleanup on page unload
+  window.addEventListener('beforeunload', () => {
+    stopAutoRefresh();
   });
   
   // Project creation event listeners
@@ -74,6 +408,7 @@ document.addEventListener('DOMContentLoaded', () => {
     hideSuccess();
 
     try {
+      console.log('Loading projects...');
       const response = await fetch('/api/projects');
       
       if (!response.ok) {
@@ -81,9 +416,16 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       
       projects = await response.json();
+      console.log('Projects loaded:', projects);
+      
       updateLastUpdated();
       renderProjects();
       checkForOverdueMilestones();
+      checkProjectDates();
+      
+      // Add progress check after loading projects
+      console.log('Checking milestone progress...');
+      checkMilestoneProgress();
     } catch (error) {
       console.error('Error loading projects:', error);
       showError('Error loading projects from Linear');
@@ -98,6 +440,7 @@ document.addEventListener('DOMContentLoaded', () => {
     hideSuccess();
 
     try {
+      console.log('Refreshing data...');
       const response = await fetch('/api/refresh', {
         method: 'POST',
       });
@@ -106,6 +449,7 @@ document.addEventListener('DOMContentLoaded', () => {
         throw new Error(`HTTP error! Status: ${response.status}`);
       }
       
+      console.log('Data refreshed, loading updated projects...');
       await loadProjects();
       showSuccess('Data refreshed successfully');
     } catch (error) {
@@ -228,7 +572,35 @@ document.addEventListener('DOMContentLoaded', () => {
             const milestoneDate = document.createElement('div');
             milestoneDate.className = `milestone-date ${milestone.isOverdue ? 'overdue' : ''}`;
             milestoneDate.textContent = `Due Date: ${formatDate(milestone.targetDate)}`;
+            
+            // Add progress information
+            const progress = calculateMilestoneProgress(milestone);
+            const progressInfo = document.createElement('div');
+            progressInfo.className = 'milestone-progress';
+            
+            const progressBar = document.createElement('div');
+            progressBar.className = 'progress';
+            progressBar.innerHTML = `
+              <div class="progress-bar ${progress < 70 ? 'bg-warning' : 'bg-success'}" 
+                   role="progressbar" 
+                   style="width: ${progress}%" 
+                   aria-valuenow="${progress}" 
+                   aria-valuemin="0" 
+                   aria-valuemax="100">
+                ${progress.toFixed(1)}%
+              </div>
+            `;
+            
+            if (isMilestoneDueSoon(milestone.targetDate) && progress < 70) {
+              const riskBadge = document.createElement('span');
+              riskBadge.className = 'badge bg-danger ms-2';
+              riskBadge.textContent = 'AT RISK';
+              progressInfo.appendChild(riskBadge);
+            }
+            
+            progressInfo.appendChild(progressBar);
             milestoneItem.appendChild(milestoneDate);
+            milestoneItem.appendChild(progressInfo);
           }
 
           // Create subtasks list
@@ -300,12 +672,31 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function formatDate(dateString) {
-    const date = new Date(dateString);
+    if (!dateString) return '';
+    // First normalize the date to ensure consistent format
+    const normalizedDate = normalizeDate(dateString);
+    const date = new Date(normalizedDate);
     return date.toLocaleDateString();
   }
 
   function formatDateTime(date) {
     return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+  }
+
+  function normalizeDate(dateString) {
+    if (!dateString) return '';
+    try {
+      // Handle European format (DD/MM/YYYY)
+      if (dateString.includes('/')) {
+        const [day, month, year] = dateString.split('/');
+        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+      }
+      // Handle ISO format (YYYY-MM-DD)
+      return dateString;
+    } catch (error) {
+      console.error('Error normalizing date:', error);
+      return dateString;
+    }
   }
 
   function showLoading(show) {
@@ -575,6 +966,17 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       
       const result = await response.json();
+      
+      // Track the new project's milestone dates
+      saveProjectTracking(
+        result.id,
+        result.name || projectData.name,
+        projectData.milestones.map(m => ({
+          id: m.id || `temp-${Date.now()}`,
+          name: m.name,
+          targetDate: m.targetDate
+        }))
+      );
       
       // Close modal and reset form
       if (projectModal) {

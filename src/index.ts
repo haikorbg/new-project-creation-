@@ -5,6 +5,8 @@ import fs from 'fs';
 import LinearService from './services/linearService';
 import PdfService, { ProjectData, Milestone, Subtask } from './services/pdfService';
 import dotenv from 'dotenv';
+import SlackService from './services/slackService';
+import { slackClient, SLACK_CHANNEL_ID } from './services/slackService';
 
 dotenv.config();
 
@@ -179,6 +181,113 @@ app.post('/api/upload-sow', upload.single('sow'), async (req, res) => {
       success: false,
       error: 'Failed to process PDF file' 
     });
+  }
+});
+
+interface MilestoneReminder {
+  name: string;
+  targetDate?: string;
+}
+
+// API endpoint to send date reminder notifications
+app.post('/api/notify/dates-reminder', async (req, res) => {
+  try {
+    console.log('Received date reminder request:', {
+      body: req.body,
+      timestamp: new Date().toISOString()
+    });
+    
+    const { projectId, projectName, milestones }: { 
+      projectId: string;
+      projectName: string;
+      milestones: MilestoneReminder[];
+    } = req.body;
+    
+    // Get the project's channel
+    console.log('Creating/getting channel for project:', projectName);
+    const channelId = await SlackService.createProjectChannel(projectName);
+    console.log('Channel ID for reminder:', channelId);
+    
+    // Send reminder message
+    await slackClient.chat.postMessage({
+      channel: channelId,
+      text: `⚠️ Reminder: Milestone dates haven't been updated in 2 minutes since project creation.`,
+      blocks: [
+        {
+          type: 'header',
+          text: {
+            type: 'plain_text',
+            text: '⚠️ Milestone Dates Reminder',
+            emoji: true
+          }
+        },
+        {
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: `The milestone dates for project *${projectName}* haven't been updated in 2 minutes since creation.`
+          }
+        },
+        {
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: '*Current Milestone Dates:*\n' + 
+              milestones.map(m => `• ${m.name}: ${m.targetDate || 'Not set'}`).join('\n')
+          }
+        },
+        {
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: 'Please review and update the milestone dates if needed.'
+          }
+        }
+      ]
+    });
+    console.log('Reminder message sent successfully to channel:', channelId);
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error sending date reminder:', error);
+    res.status(500).json({ error: 'Failed to send date reminder' });
+  }
+});
+
+// Add milestone progress notification endpoint
+app.post('/api/notify/milestone-progress', async (req, res) => {
+  try {
+    const { projectName, milestone, message } = req.body;
+
+    if (!projectName || !milestone || !message) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    // Get the project's channel
+    console.log('Getting channel for project:', projectName);
+    const channelId = await SlackService.createProjectChannel(projectName);
+    console.log('Channel ID for progress notification:', channelId);
+
+    // Send message to Slack
+    const slackMessage = {
+      channel: channelId,
+      text: message,
+      blocks: [
+        {
+          type: "section",
+          text: {
+            type: "mrkdwn",
+            text: message
+          }
+        }
+      ]
+    };
+
+    await slackClient.chat.postMessage(slackMessage);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error sending milestone progress notification:', error);
+    res.status(500).json({ error: 'Failed to send notification' });
   }
 });
 

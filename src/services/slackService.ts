@@ -5,7 +5,8 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // Initialize Slack client with bot token from environment variables
-const slackClient = new WebClient(process.env.SLACK_BOT_TOKEN);
+export const SLACK_CHANNEL_ID = process.env.SLACK_CHANNEL_ID || '';
+export const slackClient = new WebClient(process.env.SLACK_BOT_TOKEN);
 const SLACK_CHANNEL = 'C07PWD53552';
 
 // Debug logging for Slack configuration
@@ -85,9 +86,6 @@ export const SlackService = {
 
         const channelId = result.channel.id;
         console.log(`Successfully created channel with ID: ${channelId}`);
-
-        // Join the bot to the channel
-        await slackClient.conversations.join({ channel: channelId });
 
         // Set channel topic
         try {
@@ -247,6 +245,26 @@ export const SlackService = {
           }
         });
       }
+
+      // Add project checklist
+      blocks.push(
+        {
+          type: 'divider'
+        },
+        {
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: '*Project Setup Checklist:*\n' +
+                  '☐ Regular meeting with the client\n' +
+                  '☐ Do we have all access\n' +
+                  '☐ Demo planning\n' +
+                  '☐ MoM - Regular updates to the client\n' +
+                  '☐ DoD (Definition of Done)\n' +
+                  '☐ Risk assessment'
+          }
+        }
+      );
 
       blocks.push({
         type: 'divider'
